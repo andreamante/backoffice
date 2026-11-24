@@ -1,0 +1,206 @@
+@if (product()) {
+  <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <!-- Scheda Anagrafica & Riepilogo Giacenza -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-family: monospace; font-size: 1.1rem; font-weight: 800; color: var(--primary); background: var(--primary-light); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--primary-border);">
+              {{ product()?.sku }}
+            </span>
+            <h2 class="card-title">{{ product()?.nome }}</h2>
+            @if (product()?.attivo) {
+              <span class="badge badge-ok">Attivo</span>
+            } @else {
+              <span class="badge badge-danger">Non Attivo</span>
+            }
+          </div>
+          <p class="card-subtitle" style="margin-top: 0.35rem;">
+            {{ product()?.descrizione || 'Nessuna descrizione tecnica presente.' }}
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem;">
+          <a routerLink="/prodotti" class="btn btn-secondary">
+            ◀ Torna ai Prodotti
+          </a>
+
+          @if (auth.canManageMovements()) {
+            <a [routerLink]="['/movimenti']" [queryParams]="{ prodottoId: product()?.id }" class="btn btn-primary">
+              🔄 Registra Movimento
+            </a>
+          }
+
+          @if (auth.canManageProducts()) {
+            <a [routerLink]="['/prodotti', product()?.id, 'modifica']" class="btn btn-outline">
+              ✏️ Modifica
+            </a>
+          }
+        </div>
+      </div>
+
+      <!-- KPI Giacenza & Scorta (Livello 2) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">
+            Giacenza Attuale (Calcolata)
+          </span>
+          <div style="font-size: 1.8rem; font-weight: 900; margin-top: 0.25rem;"
+               [style.color]="product()?.giacenza === 0 ? '#dc2626' : (product()?.giacenza || 0) <= (product()?.scortaMinima || 0) ? '#d97706' : '#16a34a'">
+            {{ product()?.giacenza }} pz
+          </div>
+          <small style="color: var(--text-light); font-size: 0.72rem;">Somma carichi − somma scarichi</small>
+        </div>
+
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">
+            Stato Scorta
+          </span>
+          <div style="margin-top: 0.5rem;">
+            @if (product()?.statoScorta === 'Esaurito') {
+              <span class="badge badge-danger" style="font-size: 1rem; padding: 0.35rem 0.8rem;">
+                🚨 Esaurito (0 pz)
+              </span>
+            } @else if (product()?.statoScorta === 'Sotto scorta') {
+              <span class="badge badge-warning" style="font-size: 1rem; padding: 0.35rem 0.8rem;">
+                ⚠️ Sotto Scorta
+              </span>
+            } @else {
+              <span class="badge badge-ok" style="font-size: 1rem; padding: 0.35rem 0.8rem;">
+                ✅ Regolare (Ok)
+              </span>
+            }
+          </div>
+          <small style="color: var(--text-light); font-size: 0.72rem; display: block; margin-top: 0.35rem;">
+            Soglia minima: {{ product()?.scortaMinima }} pz
+          </small>
+        </div>
+
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">
+            Quantità da Riordinare
+          </span>
+          <div style="font-size: 1.8rem; font-weight: 900; margin-top: 0.25rem; color: var(--primary);">
+            {{ product()?.quantitaDaRiordinare }} pz
+          </div>
+          <small style="color: var(--text-light); font-size: 0.72rem;">Formula: 2 × scorta minima − giacenza</small>
+        </div>
+
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">
+            Prezzo di Vendita
+          </span>
+          <div style="font-size: 1.8rem; font-weight: 900; margin-top: 0.25rem;">
+            @if (auth.canViewPrices()) {
+              {{ product()?.prezzoVendita | currency:'EUR':'symbol':'1.2-2' }}
+            } @else {
+              <span class="price-masked" style="font-size: 1rem;">🔒 Riservato</span>
+            }
+          </div>
+          <small style="color: var(--text-light); font-size: 0.72rem;">
+            Fornitore: {{ product()?.nomeFornitore }}
+          </small>
+        </div>
+      </div>
+
+      <!-- Dettagli anagrafici rapidi -->
+      <div style="display: flex; gap: 2rem; font-size: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem; color: #475569;">
+        <div><strong>Categoria:</strong> {{ product()?.nomeCategoria }}</div>
+        <div><strong>Fornitore:</strong> {{ product()?.nomeFornitore }}</div>
+        <div><strong>Scorta Minima di Sicurezza:</strong> {{ product()?.scortaMinima }} pz</div>
+      </div>
+    </div>
+
+    <!-- Storico Movimenti con Giacenza Progressiva Riga per Riga (Livello 2) -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title" style="font-size: 1.15rem;">
+            📜 Storico Movimenti e Scheda di Magazzino
+          </h3>
+          <p class="card-subtitle">
+            Tracciabilità completa di carichi e scarichi con calcolo della giacenza progressiva
+          </p>
+        </div>
+
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          Totale registrazioni: <strong>{{ storicoMovimenti().length }}</strong>
+        </span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Data & Ora</th>
+              <th>Tipo</th>
+              <th style="text-align: right;">Variazione</th>
+              <th style="text-align: right; background-color: #fff7ed; color: #c2410c;">Giacenza Progressiva</th>
+              <th>Causale</th>
+              <th>Rif. Ordine</th>
+              <th>Operatore</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (storicoMovimenti().length === 0) {
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                  <em>Nessun movimento registrato per questo prodotto. Giacenza iniziale = 0 pz.</em>
+                </td>
+              </tr>
+            } @else {
+              @for (item of storicoMovimenti(); track item.movimento.id) {
+                <tr>
+                  <td style="font-size: 0.8rem; white-space: nowrap;">
+                    {{ item.movimento.data | date:'dd/MM/yyyy HH:mm' }}
+                  </td>
+                  <td>
+                    @if (item.movimento.tipo === 'carico') {
+                      <span class="badge badge-ok">📥 CARICO</span>
+                    } @else {
+                      <span class="badge badge-danger">📤 SCARICO</span>
+                    }
+                  </td>
+                  <td style="text-align: right; font-weight: 700;">
+                    <span [style.color]="item.variazione > 0 ? '#16a34a' : '#dc2626'">
+                      {{ item.variazione > 0 ? '+' : '' }}{{ item.variazione }} pz
+                    </span>
+                  </td>
+                  <!-- GIACENZA PROGRESSIVA RIGA PER RIGA (Requisito Livello 2) -->
+                  <td style="text-align: right; font-weight: 800; font-size: 0.95rem; background-color: #fffaf0;">
+                    {{ item.giacenzaProgressiva }} pz
+                  </td>
+                  <td>
+                    {{ item.movimento.causale }}
+                  </td>
+                  <td>
+                    @if (item.movimento.ordineId) {
+                      <span class="badge badge-neutral" style="font-family: monospace;">
+                        {{ item.movimento.causale }}
+                      </span>
+                    } @else {
+                      <span style="color: var(--text-light);">-</span>
+                    }
+                  </td>
+                  <td style="font-size: 0.8rem; color: var(--text-muted);">
+                    {{ item.movimento.operatore || 'Sistema' }}
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+} @else {
+  <div class="card" style="text-align: center; padding: 3rem;">
+    <h3 style="color: #991b1b;">Prodotto non trovato</h3>
+    <p style="color: var(--text-muted); margin: 0.5rem 0 1.5rem 0;">
+      L'articolo richiesto non esiste o è stato eliminato.
+    </p>
+    <a routerLink="/prodotti" class="btn btn-primary">
+      Torna all'Elenco Prodotti
+    </a>
+  </div>
+}

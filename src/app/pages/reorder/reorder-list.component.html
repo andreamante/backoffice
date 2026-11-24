@@ -1,0 +1,124 @@
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Vista «Da Riordinare»</h2>
+      <p class="card-subtitle">
+        Prodotti esauriti o sotto scorta, raggruppati per fornitore, con quantità suggerita (2 × scorta minima − giacenza)
+      </p>
+    </div>
+
+    <div style="font-size: 0.85rem; color: var(--text-muted);">
+      Fornitori coinvolti: <strong>{{ storage.daRiordinarePerFornitore().length }}</strong>
+    </div>
+  </div>
+
+  @if (storage.daRiordinarePerFornitore().length === 0) {
+    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎉</div>
+      <h3 style="color: #166534; font-size: 1.2rem; font-weight: 700;">Magazzino in Perfetto Ordine!</h3>
+      <p style="font-size: 0.9rem; margin-top: 0.25rem;">
+        Nessun prodotto attivo è attualmente esaurito o sotto la scorta minima di sicurezza.
+      </p>
+    </div>
+  } @else {
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      @for (gruppo of storage.daRiordinarePerFornitore(); track gruppo.fornitore.id) {
+        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); overflow: hidden; background: #ffffff;">
+          <!-- Intestazione Fornitore con contatti -->
+          <div style="background-color: #f8fafc; padding: 1rem 1.25rem; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.2rem;">🏭</span>
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--navy-dark); margin: 0;">
+                  {{ gruppo.fornitore.ragioneSociale }}
+                </h3>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; display: flex; gap: 1rem;">
+                <span>📧 <a [href]="'mailto:' + gruppo.fornitore.email" style="color: var(--primary);">{{ gruppo.fornitore.email }}</a></span>
+                <span>📞 {{ gruppo.fornitore.telefono }}</span>
+              </div>
+            </div>
+
+            <span class="badge badge-warning" style="font-size: 0.85rem; padding: 0.35rem 0.65rem;">
+              {{ gruppo.prodotti.length }} articoli da ordinare
+            </span>
+          </div>
+
+          <!-- Tabella Articoli da Riordinare per questo Fornitore -->
+          <div class="table-responsive" style="border: none; border-radius: 0;">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Prodotto</th>
+                  <th style="text-align: center;">Giacenza Attuale</th>
+                  <th style="text-align: center;">Scorta Minima</th>
+                  <th>Stato Scorta</th>
+                  <th style="text-align: right; background-color: #fff7ed; color: #c2410c;">
+                    Quantità Suggerita da Riordinare
+                  </th>
+                  @if (auth.canViewPrices()) {
+                    <th style="text-align: right;">Costo Stimato</th>
+                  }
+                  <th style="text-align: right;">Azione Rapida</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of gruppo.prodotti; track p.id) {
+                  <tr>
+                    <td>
+                      <a [routerLink]="['/prodotti', p.id]" style="font-family: monospace; font-weight: 700; color: var(--primary); text-decoration: none;">
+                        {{ p.sku }}
+                      </a>
+                    </td>
+                    <td>
+                      <strong>{{ p.nome }}</strong>
+                    </td>
+                    <td style="text-align: center; font-weight: 800;"
+                        [style.color]="p.giacenza === 0 ? '#dc2626' : '#d97706'">
+                      {{ p.giacenza }} pz
+                    </td>
+                    <td style="text-align: center; color: var(--text-muted);">
+                      {{ p.scortaMinima }} pz
+                    </td>
+                    <td>
+                      @if (p.statoScorta === 'Esaurito') {
+                        <span class="badge badge-danger">🚨 Esaurito</span>
+                      } @else {
+                        <span class="badge badge-warning">⚠️ Sotto Scorta</span>
+                      }
+                    </td>
+
+                    <!-- Quantità Suggerita: 2 * scortaMinima - giacenza -->
+                    <td style="text-align: right; font-weight: 900; font-size: 1rem; color: var(--primary); background-color: #fffaf0;">
+                      {{ p.quantitaDaRiordinare }} pz
+                    </td>
+
+                    @if (auth.canViewPrices()) {
+                      <td style="text-align: right; font-weight: 600;">
+                        {{ (p.quantitaDaRiordinare * p.prezzoVendita) | currency:'EUR':'symbol':'1.2-2' }}
+                      </td>
+                    }
+
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; gap: 0.35rem;">
+                        <button
+                          type="button"
+                          class="btn btn-primary btn-sm"
+                          (click)="quickRestock(p)"
+                          title="Registra subito il carico di merce ricevuto"
+                        >
+                          📥 Carico (+{{ p.quantitaDaRiordinare }})
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
