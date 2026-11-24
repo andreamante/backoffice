@@ -1,0 +1,88 @@
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Registro Operazioni & Audit Log (Livello 5)</h2>
+      <p class="card-subtitle">
+        Tracciamento completo: cosa è stato fatto, quando, da chi e con quale ruolo
+      </p>
+    </div>
+
+    @if (auth.canManageAdministration()) {
+      <button
+        type="button"
+        class="btn btn-danger btn-sm"
+        (click)="annullaUltima()"
+        title="Annulla l'ultima operazione registrata nel sistema"
+      >
+        ↩️ Annulla Ultima Operazione
+      </button>
+    }
+  </div>
+
+  @if (actionMessage()) {
+    <div class="alert alert-success">
+      <span>✅ {{ actionMessage() }}</span>
+      <button type="button" class="btn btn-sm btn-outline" (click)="actionMessage.set(null)">✕</button>
+    </div>
+  }
+
+  @if (actionError()) {
+    <div class="alert alert-danger">
+      <span>❌ {{ actionError() }}</span>
+      <button type="button" class="btn btn-sm btn-outline" (click)="actionError.set(null)">✕</button>
+    </div>
+  }
+
+  <div class="table-responsive">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Data &amp; Ora</th>
+          <th>Operatore</th>
+          <th>Profilo</th>
+          <th>Azione</th>
+          <th>Dettaglio Operazione</th>
+          <th style="text-align: center;">Annullabile</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (storage.auditLogs().length === 0) {
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+              Nessuna operazione registrata nell'audit log.
+            </td>
+          </tr>
+        } @else {
+          @for (log of storage.auditLogs(); track log.id) {
+            <tr>
+              <td style="font-size: 0.8rem; white-space: nowrap;">
+                {{ log.timestamp | date:'dd/MM/yyyy HH:mm:ss' }}
+              </td>
+              <td>
+                <strong>{{ log.operatore }}</strong>
+              </td>
+              <td>
+                <span class="user-role-tag" [ngClass]="'role-' + log.ruolo">
+                  {{ log.ruolo }}
+                </span>
+              </td>
+              <td style="font-family: monospace; font-size: 0.8rem; color: #475569;">
+                {{ log.tipo }}
+              </td>
+              <td>
+                {{ log.descrizione }}
+              </td>
+              <td style="text-align: center;">
+                @if (log.annullabile) {
+                  <span class="badge badge-ok">Sì</span>
+                } @else {
+                  <span class="badge badge-neutral">No</span>
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
