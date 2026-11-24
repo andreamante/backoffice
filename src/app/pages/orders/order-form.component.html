@@ -1,0 +1,193 @@
+<div class="card" style="max-width: 960px; margin: 0 auto;">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Nuovo Ordine Cliente</h2>
+      <p class="card-subtitle">
+        Componi le righe prodotto. I prezzi unitari verranno congelati all'atto della conferma ordine.
+      </p>
+    </div>
+
+    <a routerLink="/ordini" class="btn btn-secondary">
+      Annulla
+    </a>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger" style="white-space: pre-line;">
+      <span>❌ {{ errorMessage() }}</span>
+      <button type="button" class="btn btn-sm btn-outline" (click)="errorMessage.set(null)">✕</button>
+    </div>
+  }
+
+  <form (ngSubmit)="onSubmit()">
+    <!-- Cliente -->
+    <div class="form-group" style="margin-bottom: 1.5rem;">
+      <label class="form-label required">Cliente / Ragione Sociale</label>
+      <input
+        type="text"
+        class="form-control"
+        placeholder="es. Elettroimpianti Rossi S.n.c."
+        [ngModel]="cliente()"
+        (ngModelChange)="cliente.set($event)"
+        name="cliente"
+        required
+      />
+    </div>
+
+    <!-- Righe Dinamiche Ordine -->
+    <div style="margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="font-size: 1rem; font-weight: 700; color: var(--navy-dark); margin: 0;">
+          Articoli in Ordine
+        </h3>
+
+        <button type="button" class="btn btn-secondary btn-sm" (click)="addRow()">
+          ➕ Aggiungi Riga
+        </button>
+      </div>
+
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th style="width: 50%;">Articolo da Catalogo</th>
+              <th style="width: 15%; text-align: center;">Quantità</th>
+              <th style="width: 15%; text-align: right;">Prezzo Unit.</th>
+              <th style="width: 15%; text-align: right;">Subtotale</th>
+              <th style="width: 5%; text-align: center;">Rimuovi</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (riga of righeConDettaglio(); track riga.index) {
+              <tr>
+                <td>
+                  <select
+                    class="form-control"
+                    [ngModel]="riga.prodottoId"
+                    (ngModelChange)="updateRowProduct(riga.index, $event)"
+                    [name]="'prod_' + riga.index"
+                    required
+                  >
+                    <option value="">-- Seleziona un articolo --</option>
+                    @for (p of storage.prodottiConGiacenza(); track p.id) {
+                      <option [value]="p.id">
+                        [{{ p.sku }}] {{ p.nome }} (Disp: {{ p.giacenza }} pz - {{ p.prezzoVendita | currency:'EUR':'symbol':'1.2-2' }})
+                      </option>
+                    }
+                  </select>
+
+                  @if (riga.prodotto) {
+                    <div style="font-size: 0.75rem; margin-top: 0.25rem; display: flex; gap: 0.75rem;">
+                      <span>Giacenza attuale: <strong>{{ riga.giacenzaDisponibile }} pz</strong></span>
+                      @if (riga.stockInsufficiente) {
+                        <span style="color: #dc2626; font-weight: 700;">
+                          ⚠️ Quantità richiesta eccede la giacenza!
+                        </span>
+                      }
+                    </div>
+                  }
+                </td>
+
+                <td style="text-align: center;">
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    class="form-control"
+                    style="text-align: center;"
+                    [ngModel]="riga.quantita"
+                    (ngModelChange)="updateRowQuantity(riga.index, $event)"
+                    [name]="'qta_' + riga.index"
+                    required
+                  />
+                </td>
+
+                <td style="text-align: right; font-weight: 600;">
+                  {{ riga.prezzoUnitario | currency:'EUR':'symbol':'1.2-2' }}
+                </td>
+
+                <td style="text-align: right; font-weight: 700; color: var(--navy-dark);">
+                  {{ riga.subtotale | currency:'EUR':'symbol':'1.2-2' }}
+                </td>
+
+                <td style="text-align: center;">
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    style="color: #ef4444; border-color: transparent;"
+                    [disabled]="righe().length <= 1"
+                    (click)="removeRow(riga.index)"
+                    title="Rimuovi questa riga"
+                  >
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sezione Calcolo Totali in Tempo Reale (Livello 3) -->
+    <div style="display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; align-items: start; margin-top: 1.5rem;">
+      <!-- Spiegazione Regole di Sconto -->
+      <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; font-size: 0.8rem; color: #475569;">
+        <strong style="color: var(--navy-dark); font-size: 0.85rem; display: block; margin-bottom: 0.35rem;">
+          📐 Regole di Calcolo Sconti Vallebruna:
+        </strong>
+        <ul style="margin-left: 1.25rem;">
+          <li>Lordo &lt; 500,00 € ➔ <strong>Nessuno sconto</strong></li>
+          <li>Lordo da 500,00 € a 999,99 € ➔ <strong>Sconto 5%</strong></li>
+          <li>Lordo da 1.000,00 € o più ➔ <strong>Sconto 10%</strong></li>
+          <li>IVA 22% calcolata sull'importo netto scontato.</li>
+        </ul>
+      </div>
+
+      <!-- Box Totali Aggiornati Live -->
+      <div style="background: white; border: 2px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
+          <span>Somma righe (lordo):</span>
+          <strong>{{ totali().lordo | currency:'EUR':'symbol':'1.2-2' }}</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem; color: #16a34a;">
+          <span>Sconto ({{ totali().percentualeSconto }}%):</span>
+          <strong>-{{ totali().importoSconto | currency:'EUR':'symbol':'1.2-2' }}</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
+          <span>Imponibile scontato:</span>
+          <strong>{{ totali().imponibile | currency:'EUR':'symbol':'1.2-2' }}</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem;">
+          <span>IVA (22%):</span>
+          <strong>{{ totali().iva | currency:'EUR':'symbol':'1.2-2' }}</strong>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 900; border-top: 2px solid var(--border-color); padding-top: 0.75rem; color: var(--navy-dark);">
+          <span>Totale Ordine:</span>
+          <span style="color: var(--primary);">{{ totali().totale | currency:'EUR':'symbol':'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+      <a routerLink="/ordini" class="btn btn-secondary">
+        Annulla
+      </a>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="isSubmitting() || !cliente().trim() || righe().length === 0"
+      >
+        @if (isSubmitting()) {
+          <span>⏳ Registrazione in corso...</span>
+        } @else {
+          <span>🛒 Conferma e Salva Ordine</span>
+        }
+      </button>
+    </div>
+  </form>
+</div>
