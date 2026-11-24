@@ -1,0 +1,180 @@
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">
+        {{ isEditMode() ? 'Modifica Prodotto' : 'Nuovo Prodotto a Catalogo' }}
+      </h2>
+      <p class="card-subtitle">
+        Compila tutti i campi obbligatori contrassegnati da asterisco (*)
+      </p>
+    </div>
+
+    <a routerLink="/prodotti" class="btn btn-secondary">
+      Annulla
+    </a>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="alert alert-danger">
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
+    <div class="form-grid">
+      <!-- SKU con formato ABC-0001 e controllo univocità -->
+      <div class="form-group">
+        <label class="form-label required">Codice SKU</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="es. ELE-0001"
+          formControlName="sku"
+          [class.is-invalid]="form.get('sku')?.touched && form.get('sku')?.invalid"
+        />
+        <small class="form-hint">Formato richiesto: 3 lettere maiuscole, trattino, 4 cifre (es. ELE-0001)</small>
+        @if (form.get('sku')?.touched && form.get('sku')?.hasError('required')) {
+          <span class="form-error">Lo SKU è obbligatorio.</span>
+        }
+        @if (form.get('sku')?.touched && form.get('sku')?.hasError('pattern')) {
+          <span class="form-error">Formato SKU non valido: usa 3 lettere maiuscole seguite da trattino e 4 cifre.</span>
+        }
+      </div>
+
+      <!-- Nome prodotto minimo 3 caratteri -->
+      <div class="form-group" style="grid-column: span 2;">
+        <label class="form-label required">Nome Prodotto</label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="es. Interruttore bipolare 16A Living Now"
+          formControlName="nome"
+          [class.is-invalid]="form.get('nome')?.touched && form.get('nome')?.invalid"
+        />
+        @if (form.get('nome')?.touched && form.get('nome')?.hasError('required')) {
+          <span class="form-error">Il nome del prodotto è obbligatorio.</span>
+        }
+        @if (form.get('nome')?.touched && form.get('nome')?.hasError('minlength')) {
+          <span class="form-error">Il nome deve contenere almeno 3 caratteri.</span>
+        }
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Descrizione Articolo</label>
+      <textarea
+        class="form-control"
+        rows="2"
+        placeholder="Caratteristiche tecniche, colore, tensione, certificazioni..."
+        formControlName="descrizione"
+      ></textarea>
+    </div>
+
+    <div class="form-grid">
+      <!-- Categoria Obbligatoria -->
+      <div class="form-group">
+        <label class="form-label required">Categoria Merceologica</label>
+        <select
+          class="form-control"
+          formControlName="categoriaId"
+          [class.is-invalid]="form.get('categoriaId')?.touched && form.get('categoriaId')?.invalid"
+        >
+          <option value="">-- Seleziona una categoria --</option>
+          @for (c of storage.categorie(); track c.id) {
+            <option [value]="c.id">{{ c.nome }}</option>
+          }
+        </select>
+        @if (form.get('categoriaId')?.touched && form.get('categoriaId')?.hasError('required')) {
+          <span class="form-error">La categoria è obbligatoria.</span>
+        }
+      </div>
+
+      <!-- Fornitore Obbligatorio -->
+      <div class="form-group">
+        <label class="form-label required">Fornitore Principale</label>
+        <select
+          class="form-control"
+          formControlName="fornitoreId"
+          [class.is-invalid]="form.get('fornitoreId')?.touched && form.get('fornitoreId')?.invalid"
+        >
+          <option value="">-- Seleziona un fornitore --</option>
+          @for (f of storage.fornitori(); track f.id) {
+            <option [value]="f.id">{{ f.ragioneSociale }}</option>
+          }
+        </select>
+        @if (form.get('fornitoreId')?.touched && form.get('fornitoreId')?.hasError('required')) {
+          <span class="form-error">Il fornitore è obbligatorio.</span>
+        }
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <!-- Prezzo maggiore di zero -->
+      <div class="form-group">
+        <label class="form-label required">Prezzo di Vendita (€)</label>
+        <input
+          type="number"
+          step="0.01"
+          class="form-control"
+          placeholder="0.00"
+          formControlName="prezzoVendita"
+          [class.is-invalid]="form.get('prezzoVendita')?.touched && form.get('prezzoVendita')?.invalid"
+        />
+        @if (form.get('prezzoVendita')?.touched && (form.get('prezzoVendita')?.hasError('required') || form.get('prezzoVendita')?.hasError('min'))) {
+          <span class="form-error">Il prezzo di vendita deve essere maggiore di zero.</span>
+        }
+      </div>
+
+      <!-- Scorta minima intera, maggiore o uguale a zero -->
+      <div class="form-group">
+        <label class="form-label required">Scorta Minima di Sicurezza</label>
+        <input
+          type="number"
+          step="1"
+          class="form-control"
+          placeholder="0"
+          formControlName="scortaMinima"
+          [class.is-invalid]="form.get('scortaMinima')?.touched && form.get('scortaMinima')?.invalid"
+        />
+        <small class="form-hint">Soglia sotto la quale il sistema suggerisce il riordino</small>
+        @if (form.get('scortaMinima')?.touched && (form.get('scortaMinima')?.hasError('required') || form.get('scortaMinima')?.hasError('min') || form.get('scortaMinima')?.hasError('pattern'))) {
+          <span class="form-error">La scorta minima deve essere un numero intero maggiore o uguale a zero.</span>
+        }
+      </div>
+
+      <!-- Attivo sì/no -->
+      <div class="form-group" style="display: flex; align-items: center; margin-top: 1.5rem;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="checkbox" formControlName="attivo" style="width: 18px; height: 18px;" />
+          <strong>Articolo Attivo a Catalogo</strong>
+        </label>
+      </div>
+    </div>
+
+    <!-- Regola Numero Uno Alert -->
+    <div class="alert alert-info" style="margin-top: 1rem;">
+      <span>
+        🔒 <strong>Regola Numero Uno:</strong> La giacenza non si scrive a mano. Verrà calcolata automaticamente
+        a partire dai movimenti di carico e scarico registrati in magazzino.
+      </span>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+      <a routerLink="/prodotti" class="btn btn-secondary">
+        Annulla
+      </a>
+      <!-- Pulsante disabilitato durante il salvataggio o se form non valido -->
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="isSaving() || form.invalid"
+      >
+        @if (isSaving()) {
+          <span>⏳ Salvataggio in corso...</span>
+        } @else {
+          <span>💾 {{ isEditMode() ? 'Salva Modifiche' : 'Crea Prodotto' }}</span>
+        }
+      </button>
+    </div>
+  </form>
+</div>

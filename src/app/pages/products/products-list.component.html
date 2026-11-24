@@ -1,0 +1,301 @@
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Catalogo Prodotti & Giacenze</h2>
+      <p class="card-subtitle">
+        Visualizzazione e gestione anagrafica articoli e monitoraggio scorte
+      </p>
+    </div>
+
+    @if (auth.canManageProducts()) {
+      <a routerLink="/prodotti/nuovo" class="btn btn-primary">
+        <span>➕</span> Nuovo Prodotto
+      </a>
+    }
+  </div>
+
+  <!-- Barra Filtri e Ricerca (Livello 1) -->
+  <div class="filters-bar">
+    <!-- Ricerca testuale su nome e SKU a fine digitazione -->
+    <div class="search-input-wrap">
+      <input
+        type="text"
+        class="form-control"
+        placeholder="🔍 Cerca per nome o SKU (es. ELE-0001)..."
+        [ngModel]="searchRaw()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+      @if (searchRaw()) {
+        <small class="form-hint" style="color: var(--primary);">
+          Filtro attivo: "{{ debouncedSearch() }}"
+        </small>
+      }
+    </div>
+
+    <!-- Filtro per Categoria -->
+    <div style="min-width: 190px;">
+      <select
+        class="form-control"
+        [ngModel]="selectedCategoria()"
+        (ngModelChange)="selectedCategoria.set($event); currentPage.set(1)"
+      >
+        <option value="all">Tutte le Categorie ({{ storage.categorie().length }})</option>
+        @for (c of storage.categorie(); track c.id) {
+          <option [value]="c.id">{{ c.nome }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Filtro Prodotti Attivi / Non Attivi -->
+    <div style="min-width: 150px;">
+      <select
+        class="form-control"
+        [ngModel]="selectedAttivo()"
+        (ngModelChange)="selectedAttivo.set($event); currentPage.set(1)"
+      >
+        <option value="all">Stato: Tutti</option>
+        <option value="true">Solo Attivi</option>
+        <option value="false">Solo Non Attivi</option>
+      </select>
+    </div>
+
+    <!-- Filtro Stato Scorta (Livello 2) -->
+    <div style="min-width: 160px;">
+      <select
+        class="form-control"
+        [ngModel]="selectedStatoScorta()"
+        (ngModelChange)="selectedStatoScorta.set($event); currentPage.set(1)"
+      >
+        <option value="all">Scorta: Tutti</option>
+        <option value="Ok">Solo Regolari (Ok)</option>
+        <option value="Sotto scorta">Sotto Scorta</option>
+        <option value="Esaurito">Esauriti (0 pz)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Messaggio di errore generale se presente -->
+  @if (errorMessage()) {
+    <div class="alert alert-danger">
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- Tabella Custom Prodotti (NO LIBRERIE ESTERNE) -->
+  <div class="table-responsive">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <!-- Ordinamento cliccando sulle intestazioni con indicatore -->
+          <th class="sortable" (click)="toggleSort('sku')">
+            SKU
+            @if (sortField() === 'sku') {
+              <span>{{ sortAsc() ? ' ▲' : ' ▼' }}</span>
+            }
+          </th>
+          <th class="sortable" (click)="toggleSort('nome')">
+            Nome Prodotto
+            @if (sortField() === 'nome') {
+              <span>{{ sortAsc() ? ' ▲' : ' ▼' }}</span>
+            }
+          </th>
+          <th class="sortable" (click)="toggleSort('categoria')">
+            Categoria
+            @if (sortField() === 'categoria') {
+              <span>{{ sortAsc() ? ' ▲' : ' ▼' }}</span>
+            }
+          </th>
+          <th class="sortable" (click)="toggleSort('fornitore')">
+            Fornitore
+            @if (sortField() === 'fornitore') {
+              <span>{{ sortAsc() ? ' ▲' : ' ▼' }}</span>
+            }
+          </th>
+          <th class="sortable" (click)="toggleSort('prezzo')">
+            Prezzo
+            @if (sortField() === 'prezzo') {
+              <span>{{ sortAsc() ? ' ▲' : ' ▼' }}</span>
+            }
+          </th>
+          <th class="sortable" (click)="toggleSort('giacenza')">
+            Giacenza
+            @if (sortField() === 'giacenza') {
+              <span>{{ sortAsc() ? ' ▲' : ' ▼' }}</span>
+            }
+          </th>
+          <th>Stato Scorta</th>
+          <th>Attivo</th>
+          <th style="text-align: right;">Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading()) {
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+              <span>⏳ Caricamento dati in corso...</span>
+            </td>
+          </tr>
+        } @else if (filteredProducts().length === 0) {
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
+              <strong>Nessun prodotto trovato</strong>
+              <p style="font-size: 0.85rem; margin-top: 0.25rem;">
+                Nessun articolo corrisponde ai filtri impostati. Prova a modificare i termini di ricerca.
+              </p>
+            </td>
+          </tr>
+        } @else {
+          @for (p of pagedProducts(); track p.id) {
+            <tr>
+              <td>
+                <a [routerLink]="['/prodotti', p.id]" style="font-family: monospace; font-weight: 700; color: var(--primary); text-decoration: none;">
+                  {{ p.sku }}
+                </a>
+              </td>
+              <td>
+                <strong>{{ p.nome }}</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  {{ p.descrizione }}
+                </div>
+              </td>
+              <td>
+                <span class="badge badge-neutral">{{ p.nomeCategoria }}</span>
+              </td>
+              <td style="font-size: 0.8rem; color: #475569;">
+                {{ p.nomeFornitore }}
+              </td>
+
+              <!-- Prezzo di vendita: visibile SOLO per Commerciale e Amministratore (Livello 4) -->
+              <td>
+                @if (auth.canViewPrices()) {
+                  <strong>{{ p.prezzoVendita | currency:'EUR':'symbol':'1.2-2' }}</strong>
+                } @else {
+                  <span class="price-masked" title="Prezzo non visibile al profilo Magazziniere">
+                    🔒 Riservato
+                  </span>
+                }
+              </td>
+
+              <!-- Giacenza calcolata dai movimenti (Regola numero uno) -->
+              <td>
+                <strong [style.color]="p.giacenza === 0 ? '#dc2626' : p.giacenza <= p.scortaMinima ? '#d97706' : '#16a34a'">
+                  {{ p.giacenza }} pz
+                </strong>
+                <span style="font-size: 0.72rem; color: var(--text-light); display: block;">
+                  (min. {{ p.scortaMinima }})
+                </span>
+              </td>
+
+              <!-- Etichetta di stato scorta (Livello 2) -->
+              <td>
+                @if (p.statoScorta === 'Esaurito') {
+                  <span class="badge badge-danger">Esaurito</span>
+                } @else if (p.statoScorta === 'Sotto scorta') {
+                  <span class="badge badge-warning">Sotto scorta</span>
+                } @else {
+                  <span class="badge badge-ok">Ok</span>
+                }
+              </td>
+
+              <td>
+                @if (p.attivo) {
+                  <span style="color: #16a34a; font-weight: 600; font-size: 0.8rem;">Sì</span>
+                } @else {
+                  <span style="color: #dc2626; font-weight: 600; font-size: 0.8rem;">No</span>
+                }
+              </td>
+
+              <td style="text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 0.35rem;">
+                  <a [routerLink]="['/prodotti', p.id]" class="btn btn-outline btn-sm" title="Vedi storico movimenti e dettagli">
+                    Dettaglio
+                  </a>
+
+                  @if (auth.canManageProducts()) {
+                    <a [routerLink]="['/prodotti', p.id, 'modifica']" class="btn btn-secondary btn-sm" title="Modifica prodotto">
+                      ✏️
+                    </a>
+                    <button
+                      type="button"
+                      class="btn btn-outline btn-sm"
+                      style="color: #ef4444; border-color: #fecaca;"
+                      (click)="confirmDelete(p)"
+                      title="Elimina prodotto"
+                    >
+                      🗑️
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginazione (Livello 1: da X a Y di TOT) -->
+  <div class="pagination-container">
+    <div>
+      Visualizzazione <strong>{{ paginationInfo() }}</strong>
+    </div>
+
+    <div class="pagination-controls">
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        [disabled]="currentPage() === 1"
+        (click)="goToPage(currentPage() - 1)"
+      >
+        ◀ Precedente
+      </button>
+
+      <div style="display: flex; align-items: center; padding: 0 0.5rem; font-weight: 600;">
+        Pagina {{ currentPage() }} di {{ totalPages() }}
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        [disabled]="currentPage() === totalPages() || totalPages() === 0"
+        (click)="goToPage(currentPage() + 1)"
+      >
+        Successiva ▶
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Conferma Eliminazione Prodotto (Livello 1) -->
+@if (productToDelete()) {
+  <div class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Conferma Eliminazione Prodotto</h3>
+        <button type="button" class="btn btn-sm btn-outline" (click)="cancelDelete()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 0.75rem;">
+          Sei sicuro di voler eliminare definitivamente il seguente articolo dal catalogo?
+        </p>
+
+        <div style="background-color: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1rem;">
+          <div><strong>SKU:</strong> {{ productToDelete()?.sku }}</div>
+          <div><strong>Nome:</strong> {{ productToDelete()?.nome }}</div>
+          <div><strong>Giacenza attuale:</strong> {{ productToDelete()?.giacenza }} pezzi</div>
+        </div>
+
+        @if (deleteError()) {
+          <div class="alert alert-danger" style="margin-bottom: 0;">
+            <span>{{ deleteError() }}</span>
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="cancelDelete()">Annulla</button>
+        <button type="button" class="btn btn-danger" (click)="executeDelete()">Conferma Eliminazione</button>
+      </div>
+    </div>
+  </div>
+}
