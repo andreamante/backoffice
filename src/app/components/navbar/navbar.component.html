@@ -1,0 +1,142 @@
+<header class="top-navbar">
+  <div class="brand-section">
+    <div class="brand-logo-mark">V</div>
+    <div class="brand-text">
+      <h1>Vallebruna Forniture</h1>
+      <span>Backoffice Magazzino & Ordini</span>
+    </div>
+  </div>
+
+  <nav class="main-nav">
+    <a routerLink="/prodotti" routerLinkActive="active" class="nav-link">
+      <span>📦</span> Prodotti
+    </a>
+
+    @if (auth.canManageMovements()) {
+      <a routerLink="/movimenti" routerLinkActive="active" class="nav-link">
+        <span>🔄</span> Movimenti
+      </a>
+    }
+
+    @if (auth.canViewReorderList()) {
+      <a routerLink="/da-riordinare" routerLinkActive="active" class="nav-link">
+        <span>⚠️</span> Da Riordinare
+        @if (storage.daRiordinarePerFornitore().length > 0) {
+          <span class="badge badge-danger" style="padding: 0.1rem 0.35rem; font-size: 0.7rem;">
+            {{ storage.daRiordinarePerFornitore().length }}
+          </span>
+        }
+      </a>
+    }
+
+    <a routerLink="/ordini" routerLinkActive="active" class="nav-link">
+      <span>🛒</span> Ordini
+    </a>
+
+    <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">
+      <span>📊</span> Cruscotto
+    </a>
+
+    @if (auth.canManageAdministration()) {
+      <a routerLink="/categorie-fornitori" routerLinkActive="active" class="nav-link">
+        <span>🏷️</span> Categorie & Fornitori
+      </a>
+      <a routerLink="/audit" routerLinkActive="active" class="nav-link">
+        <span>📜</span> Audit Log
+      </a>
+    }
+  </nav>
+
+  <div class="user-nav-controls">
+    <!-- Switcher Rapido Ruolo per Test (Livello 4) -->
+    <div style="display: flex; gap: 0.3rem; background: rgba(0,0,0,0.25); padding: 0.2rem; border-radius: var(--radius-md);">
+      <button
+        type="button"
+        class="btn btn-sm"
+        style="padding: 0.2rem 0.45rem; font-size: 0.72rem;"
+        [style.background]="auth.userRole() === 'magazziniere' ? '#4ade80' : 'transparent'"
+        [style.color]="auth.userRole() === 'magazziniere' ? '#064e3b' : '#cbd5e1'"
+        (click)="switchRole('magazziniere')"
+        title="Passa a profilo Magazziniere"
+      >
+        Magazziniere
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-sm"
+        style="padding: 0.2rem 0.45rem; font-size: 0.72rem;"
+        [style.background]="auth.userRole() === 'commerciale' ? '#38bdf8' : 'transparent'"
+        [style.color]="auth.userRole() === 'commerciale' ? '#0c4a6e' : '#cbd5e1'"
+        (click)="switchRole('commerciale')"
+        title="Passa a profilo Commerciale"
+      >
+        Commerciale
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-sm"
+        style="padding: 0.2rem 0.45rem; font-size: 0.72rem;"
+        [style.background]="auth.userRole() === 'amministratore' ? '#818cf8' : 'transparent'"
+        [style.color]="auth.userRole() === 'amministratore' ? '#1e1b4b' : '#cbd5e1'"
+        (click)="switchRole('amministratore')"
+        title="Passa a profilo Amministratore"
+      >
+        Admin
+      </button>
+    </div>
+
+    <!-- User Info Pill -->
+    <div class="user-badge">
+      <span style="font-weight: 600;">{{ auth.currentUser()?.nome || 'Ospite' }}</span>
+      <span class="user-role-tag" [ngClass]="'role-' + auth.userRole()">
+        {{ auth.userRole() }}
+      </span>
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-outline btn-sm"
+      style="color: #cbd5e1; border-color: rgba(255,255,255,0.2);"
+      (click)="openResetModal()"
+      title="Ripristina dati iniziali di prova (Livello 0)"
+    >
+      🔄 Reset Dati
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-outline btn-sm"
+      style="color: #fca5a5; border-color: rgba(239,68,68,0.4);"
+      (click)="auth.logout()"
+      title="Disconnetti"
+    >
+      Esci
+    </button>
+  </div>
+</header>
+
+<!-- Modal Conferma Reset Dati Iniziali -->
+@if (confirmResetModal) {
+  <div class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Ripristino Dati Iniziali</h3>
+        <button type="button" class="btn btn-sm btn-outline" (click)="closeResetModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 0.75rem;">
+          Sei sicuro di voler ripristinare il database al dataset iniziale del <strong>Livello 0</strong>?
+        </p>
+        <div class="alert alert-warning">
+          <span>Verranno ricaricati i 26 prodotti, le 4 categorie, i 3 fornitori, i movimenti e i 5 ordini di prova originali. Tutte le modifiche manuali attuali verranno sovrascritte.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeResetModal()">Annulla</button>
+        <button type="button" class="btn btn-danger" (click)="confirmReset()">Sì, Ripristina Seed</button>
+      </div>
+    </div>
+  </div>
+}
